@@ -9,6 +9,9 @@ import Adafruit_BluefruitLE
 from Adafruit_BluefruitLE.services import DeviceInformation
 import uuid 
 
+import gui
+import threading
+
 
 DEVICE_UUID=uuid.UUID('f9c2bf43-8bab-4faf-92d9-3a34e0ce9f32')
 UART_SERVICE_UUID = uuid.UUID("0000aadb-0000-1000-8000-00805f9b34fb")
@@ -26,9 +29,14 @@ def getRandomMove():
 
 
 f = ""
- 
+
+flags=""
+
+cube = Cube() 
+
+
 def received(data):
-    global f
+    global f,flags
 
     
 
@@ -37,6 +45,10 @@ def received(data):
         olddata = cube.data_face
 
         ret = cube.update(d)
+        if "'" in ret:
+            ret = ret[0].lower()
+        flags = flags+ret
+        gui.updatetext(flags)
         if f == "":
             pass
         elif f == ret:
@@ -67,9 +79,9 @@ ble = Adafruit_BluefruitLE.get_provider()
 
 
 
-cube = Cube()
+
 def main():
-    
+    global flags
     # Clear any cached data because both bluez and CoreBluetooth have issues with
     # caching data and it going stale.
     ble.clear_cached_data()
@@ -127,7 +139,7 @@ def main():
 
 
         #rx = uart.find_characteristic(TX_CHAR_UUID)
-        time.sleep(2)
+        #time.sleep(2)
         
         c = uart[0].list_characteristics()
         rx = c[0]
@@ -141,8 +153,10 @@ def main():
         print('Subscribing to RX characteristic changes...')
         rx.start_notify(received)
         # Now just wait for 30 seconds to receive data.
-        print('Waiting 60 seconds to receive data from the device...')
-        time.sleep(600)
+        print('Waiting Siganl to stop.')
+        
+        while flags != "UUUU":
+            pass
         # Wait for service discovery to complete for at least the specified
         # service and characteristic UUID lists.  Will time out after 60 seconds
         # (specify timeout_sec parameter to override).
@@ -152,8 +166,20 @@ def main():
     
 
 
-ble.initialize()
-# Start the mainloop to process BLE events, and run the provided function in
-# a background thread.  When the provided main function stops running, returns
-# an integer status code, or throws an error the program will exit.
-ble.run_mainloop_with(main)
+
+
+def startble():
+    ble.initialize()
+    ble.run_mainloop_with(main)
+
+
+
+t = threading.Thread(target=startble)
+
+
+
+t.start()
+
+gui = gui.Gui()
+gui.start()
+
